@@ -1,0 +1,125 @@
+# PC Monitor Package — ha-pc-monitor
+#
+# This package defines all MQTT sensors published by sysmon-mqtt.
+# https://github.com/kekkooo86/sysmon-mqtt
+#
+# HOW TO USE:
+#   1. Copy this file to your HA config/packages/ directory.
+#   2. In configuration.yaml add (if not already present):
+#        homeassistant:
+#          packages: !include_dir_named packages
+#   3. Replace TOPIC_PREFIX below with the prefix configured in sysmon-mqtt
+#      (Settings → Connection → Topic Prefix, default: "homeassistant").
+#   4. Reload HA or restart.
+#
+# TOPIC_PREFIX: homeassistant
+# Topic format: {prefix}/sensor/{sensor_name}/state
+# ─────────────────────────────────────────────────────────────────────────────
+
+mqtt:
+  sensor:
+
+    # ── CPU ──────────────────────────────────────────────────────────────────
+
+    - name: "PC CPU Temperature"
+      unique_id: pc_monitor_cpu_temp_max
+      state_topic: "homeassistant/sensor/cpu_temp_max/state"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:thermometer
+
+    - name: "PC CPU Load"
+      unique_id: pc_monitor_cpu_load
+      state_topic: "homeassistant/sensor/cpu_load/state"
+      unit_of_measurement: "%"
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:cpu-64-bit
+
+    # ── RAM ──────────────────────────────────────────────────────────────────
+
+    - name: "PC RAM Used"
+      unique_id: pc_monitor_ram_used_pct
+      state_topic: "homeassistant/sensor/ram_used_pct/state"
+      unit_of_measurement: "%"
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:memory
+
+    - name: "PC RAM Used (GB)"
+      unique_id: pc_monitor_ram_used_gb
+      state_topic: "homeassistant/sensor/ram_used_gb/state"
+      unit_of_measurement: "GB"
+      state_class: measurement
+      value_template: "{{ value | float | round(2) }}"
+      icon: mdi:memory
+
+    # ── GPU (Linux AMD — optional) ────────────────────────────────────────────
+    # Remove these if your PC does not have a supported GPU.
+
+    - name: "PC GPU Temperature"
+      unique_id: pc_monitor_gpu_temp
+      state_topic: "homeassistant/sensor/gpu_temp/state"
+      unit_of_measurement: "°C"
+      device_class: temperature
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:thermometer
+
+    - name: "PC GPU Load"
+      unique_id: pc_monitor_gpu_load
+      state_topic: "homeassistant/sensor/gpu_load/state"
+      unit_of_measurement: "%"
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:expansion-card
+
+    - name: "PC GPU VRAM Used"
+      unique_id: pc_monitor_gpu_vram_used_pct
+      state_topic: "homeassistant/sensor/gpu_vram_used_pct/state"
+      unit_of_measurement: "%"
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:expansion-card
+
+    # ── DISK ─────────────────────────────────────────────────────────────────
+    # Add one block per mount point you enabled in sysmon-mqtt.
+    # Default topic for root mount (/): disk_used_pct_root
+
+    - name: "PC Disk Used (root)"
+      unique_id: pc_monitor_disk_used_pct_root
+      state_topic: "homeassistant/sensor/disk_used_pct_root/state"
+      unit_of_measurement: "%"
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:harddisk
+
+    - name: "PC Disk Free (root)"
+      unique_id: pc_monitor_disk_free_gb_root
+      state_topic: "homeassistant/sensor/disk_free_gb_root/state"
+      unit_of_measurement: "GB"
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:harddisk
+
+    # ── NETWORK ──────────────────────────────────────────────────────────────
+    # Add one block per network interface you enabled in sysmon-mqtt.
+    # Replace "eth0" with your actual interface name.
+
+    - name: "PC Network Download (eth0)"
+      unique_id: pc_monitor_net_download_eth0
+      state_topic: "homeassistant/sensor/net_download_eth0/state"
+      unit_of_measurement: "KB/s"
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:download-network
+
+    - name: "PC Network Upload (eth0)"
+      unique_id: pc_monitor_net_upload_eth0
+      state_topic: "homeassistant/sensor/net_upload_eth0/state"
+      unit_of_measurement: "KB/s"
+      state_class: measurement
+      value_template: "{{ value | float | round(1) }}"
+      icon: mdi:upload-network

@@ -1,0 +1,106 @@
+blueprint:
+  name: CPU Temperature LED Color
+  description: >
+    Changes the color of an RGB light based on the CPU temperature published
+    by sysmon-mqtt (https://github.com/kekkooo86/sysmon-mqtt).
+
+    Color interpolation:
+      - ≤ temp_cold   → blue  [0, 0, 255]
+      - temp_cold → temp_mid  → blue → green
+      - temp_mid  → temp_hot  → green → red
+      - ≥ temp_hot    → red   [255, 0, 0]
+
+    The automation triggers on every state change of the CPU temperature sensor.
+    No input_number helper is required.
+
+  domain: automation
+  source_url: https://github.com/kekkooo86/ha-pc-monitor/blob/main/blueprints/automation/cpu_temp_led_color.yaml
+
+  input:
+    cpu_temp_sensor:
+      name: CPU Temperature Sensor
+      description: >
+        The sensor that receives CPU temperature from sysmon-mqtt via MQTT.
+        Usually named sensor.<prefix>_cpu_temp_max.
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+
+    rgb_light:
+      name: RGB Light
+      description: The RGB light entity to control.
+      selector:
+        entity:
+          domain: light
+
+    temp_cold:
+      name: Cold threshold (°C)
+      description: Below this temperature the LED is blue.
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: "°C"
+
+    temp_mid:
+      name: Mid threshold (°C)
+      description: >
+        Transition point between blue→green and green→red.
+        Blue at temp_cold, green at this value.
+      default: 57
+      selector:
+        number:
+          min: 20
+          max: 80
+          unit_of_measurement: "°C"
+
+    temp_hot:
+      name: Hot threshold (°C)
+      description: Above this temperature the LED is fully red.
+      default: 85
+      selector:
+        number:
+          min: 40
+          max: 110
+          unit_of_measurement: "°C"
+
+trigger:
+  - platform: state
+    entity_id: !input cpu_temp_sensor
+
+condition:
+  - condition: template
+    value_template: >
+      {{ states(trigger.entity_id) | is_number }}
+
+action:
+  - service: light.turn_on
+    target:
+      entity_id: !input rgb_light
+    data:
+      rgb_color: >
+        {% set temp = states(trigger.entity_id) | float %}
+        {% set cold = temp_cold | float %}
+        {% set mid  = temp_mid  | float %}
+        {% set hot  = temp_hot  | float %}
+
+        {% macro lerp(t, t0, t1, c0, c1) %}
+          {% set ratio = ((t - t0) / (t1 - t0)) | clamp(0, 1) %}
+          {{ (c0[0] + (c1[0] - c0[0]) * ratio) | int }},
+          {{ (c0[1] + (c1[1] - c0[1]) * ratio) | int }},
+          {{ (c0[2] + (c1[2] - c0[2]) * ratio) | int }}
+        {% endmacro %}
+
+        {% if temp <= cold %}
+          [0, 0, 255]
+        {% elif temp <= mid %}
+          [{{ lerp(temp, cold, mid, [0,0,255], [0,255,0]) }}]
+        {% elif temp <= hot %}
+          [{{ lerp(temp, mid, hot, [0,255,0], [255,0,0]) }}]
+        {% else %}
+          [255, 0, 0]
+        {% endif %}
+
+mode: single
