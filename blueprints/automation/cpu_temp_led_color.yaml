@@ -21,7 +21,7 @@ blueprint:
       name: CPU Temperature Sensor
       description: >
         The sensor that receives CPU temperature from sysmon-mqtt via MQTT.
-        Usually named sensor.<prefix>_cpu_temp_max.
+        With the default package it is named sensor.pc_cpu_temperature.
       selector:
         entity:
           domain: sensor
@@ -70,10 +70,15 @@ trigger:
   - platform: state
     entity_id: !input cpu_temp_sensor
 
+variables:
+  cold_threshold: !input temp_cold
+  mid_threshold: !input temp_mid
+  hot_threshold: !input temp_hot
+
 condition:
   - condition: template
     value_template: >
-      {{ states(trigger.entity_id) | is_number }}
+      {{ trigger.to_state is not none and (trigger.to_state.state | float(none)) is not none }}
 
 action:
   - service: light.turn_on
@@ -82,12 +87,19 @@ action:
     data:
       rgb_color: >
         {% set temp = states(trigger.entity_id) | float %}
-        {% set cold = temp_cold | float %}
-        {% set mid  = temp_mid  | float %}
-        {% set hot  = temp_hot  | float %}
+        {% set cold = cold_threshold | float %}
+        {% set mid = mid_threshold | float %}
+        {% set hot = hot_threshold | float %}
 
         {% macro lerp(t, t0, t1, c0, c1) %}
-          {% set ratio = ((t - t0) / (t1 - t0)) | clamp(0, 1) %}
+          {% set ratio_raw = ((t - t0) / (t1 - t0)) %}
+          {% if ratio_raw < 0 %}
+            {% set ratio = 0 %}
+          {% elif ratio_raw > 1 %}
+            {% set ratio = 1 %}
+          {% else %}
+            {% set ratio = ratio_raw %}
+          {% endif %}
           {{ (c0[0] + (c1[0] - c0[0]) * ratio) | int }},
           {{ (c0[1] + (c1[1] - c0[1]) * ratio) | int }},
           {{ (c0[2] + (c1[2] - c0[2]) * ratio) | int }}

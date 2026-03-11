@@ -30,9 +30,9 @@ mqtt:
       value_template: "{{ value | float | round(1) }}"
       icon: mdi:thermometer
 
-    - name: "PC CPU Load"
-      unique_id: pc_monitor_cpu_load
-      state_topic: "homeassistant/sensor/cpu_load/state"
+    - name: "PC CPU Usage"
+      unique_id: pc_monitor_cpu_usage
+      state_topic: "homeassistant/sensor/cpu_usage/state"
       unit_of_measurement: "%"
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"
@@ -41,8 +41,8 @@ mqtt:
     # ── RAM ──────────────────────────────────────────────────────────────────
 
     - name: "PC RAM Used"
-      unique_id: pc_monitor_ram_used_pct
-      state_topic: "homeassistant/sensor/ram_used_pct/state"
+      unique_id: pc_monitor_ram_used_percent
+      state_topic: "homeassistant/sensor/ram_used_percent/state"
       unit_of_measurement: "%"
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"
@@ -60,25 +60,25 @@ mqtt:
     # Remove these if your PC does not have a supported GPU.
 
     - name: "PC GPU Temperature"
-      unique_id: pc_monitor_gpu_temp
-      state_topic: "homeassistant/sensor/gpu_temp/state"
+      unique_id: pc_monitor_gpu_temp_edge
+      state_topic: "homeassistant/sensor/gpu_temp_edge/state"
       unit_of_measurement: "°C"
       device_class: temperature
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"
       icon: mdi:thermometer
 
-    - name: "PC GPU Load"
-      unique_id: pc_monitor_gpu_load
-      state_topic: "homeassistant/sensor/gpu_load/state"
+    - name: "PC GPU Usage"
+      unique_id: pc_monitor_gpu_usage
+      state_topic: "homeassistant/sensor/gpu_usage/state"
       unit_of_measurement: "%"
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"
       icon: mdi:expansion-card
 
     - name: "PC GPU VRAM Used"
-      unique_id: pc_monitor_gpu_vram_used_pct
-      state_topic: "homeassistant/sensor/gpu_vram_used_pct/state"
+      unique_id: pc_monitor_gpu_vram_used_percent
+      state_topic: "homeassistant/sensor/gpu_vram_used_percent/state"
       unit_of_measurement: "%"
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"
@@ -86,19 +86,19 @@ mqtt:
 
     # ── DISK ─────────────────────────────────────────────────────────────────
     # Add one block per mount point you enabled in sysmon-mqtt.
-    # Default topic for root mount (/): disk_used_pct_root
+    # Default topic for root mount (/): disk_root_use_percent
 
     - name: "PC Disk Used (root)"
-      unique_id: pc_monitor_disk_used_pct_root
-      state_topic: "homeassistant/sensor/disk_used_pct_root/state"
+      unique_id: pc_monitor_disk_root_use_percent
+      state_topic: "homeassistant/sensor/disk_root_use_percent/state"
       unit_of_measurement: "%"
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"
       icon: mdi:harddisk
 
     - name: "PC Disk Free (root)"
-      unique_id: pc_monitor_disk_free_gb_root
-      state_topic: "homeassistant/sensor/disk_free_gb_root/state"
+      unique_id: pc_monitor_disk_root_free_gb
+      state_topic: "homeassistant/sensor/disk_root_free_gb/state"
       unit_of_measurement: "GB"
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"
@@ -106,19 +106,19 @@ mqtt:
 
     # ── NETWORK ──────────────────────────────────────────────────────────────
     # Add one block per network interface you enabled in sysmon-mqtt.
-    # Replace "eth0" with your actual interface name.
+    # Replace "eno1" with your actual interface name (check sysmon-mqtt sensor list).
 
-    - name: "PC Network Download (eth0)"
-      unique_id: pc_monitor_net_download_eth0
-      state_topic: "homeassistant/sensor/net_download_eth0/state"
+    - name: "PC Network Download (eno1)"
+      unique_id: pc_monitor_net_eno1_rx_kbs
+      state_topic: "homeassistant/sensor/net_eno1_rx_kbs/state"
       unit_of_measurement: "KB/s"
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"
       icon: mdi:download-network
 
-    - name: "PC Network Upload (eth0)"
-      unique_id: pc_monitor_net_upload_eth0
-      state_topic: "homeassistant/sensor/net_upload_eth0/state"
+    - name: "PC Network Upload (eno1)"
+      unique_id: pc_monitor_net_eno1_tx_kbs
+      state_topic: "homeassistant/sensor/net_eno1_tx_kbs/state"
       unit_of_measurement: "KB/s"
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"

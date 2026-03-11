@@ -23,5 +23,5 @@ README.md
 - Topic format: `{prefix}/sensor/{sensor_name}/state` — prefix matches sysmon-mqtt setting
 - Default prefix: `homeassistant`
 - No `input_number` helper needed — blueprint triggers directly on sensor state
-- Dashboard uses only native HA cards (no HACS required)
+- Dashboard uses `custom:grid-layout` via `layout-card`
 - Sensor unique_ids follow pattern: `pc_monitor_{sensor_name}`

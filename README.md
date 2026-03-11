@@ -12,7 +12,7 @@ Data is published to MQTT by **[sysmon-mqtt](https://github.com/kekkooo86/sysmon
 |---|---|
 | `packages/pc_monitor.yaml` | MQTT sensors: CPU temp/load, RAM, GPU, disk, network |
 | `blueprints/automation/cpu_temp_led_color.yaml` | Blueprint: RGB light color follows CPU temperature |
-| `lovelace/pc_monitor_dashboard.yaml` | Lovelace dashboard view with gauges and history graphs |
+| `lovelace/pc_monitor_dashboard.yaml` | Lovelace view using `custom:grid-layout` for a responsive PC dashboard |
 
 ---
 
@@ -21,6 +21,7 @@ Data is published to MQTT by **[sysmon-mqtt](https://github.com/kekkooo86/sysmon
 - Home Assistant (any recent version)
 - An MQTT broker (e.g. Mosquitto add-on)
 - **[sysmon-mqtt](https://github.com/kekkooo86/sysmon-mqtt)** running on the PC you want to monitor
+- `layout-card` installed in Home Assistant for the Lovelace view (`custom:grid-layout`)
 
 ---
 
@@ -94,11 +95,29 @@ Then in HA go to **Settings → Automations → Blueprints** and create a new au
 | Mid threshold | Blue→green transition point | 57°C |
 | Hot threshold | Above this → red | 85°C |
 
-### 4. Add the dashboard
+### 4. Add the dashboard layout
 
-In HA go to **Settings → Dashboards → Add dashboard** (or edit an existing one in raw YAML mode) and paste the contents of `lovelace/pc_monitor_dashboard.yaml`.
+The included view uses `type: custom:grid-layout`, so you need the **layout-card** custom card first.
 
-> **Note:** Entity IDs in the dashboard file assume the default sensor names from `packages/pc_monitor.yaml`. If you rename sensors, update the entity IDs accordingly.
+#### Install layout-card
+
+Recommended via HACS:
+
+1. Open **HACS → Frontend**
+2. Search for `layout-card`
+3. Install it
+4. Reload Home Assistant
+
+If you do not use HACS, install it manually as a Lovelace resource following the project instructions:
+https://github.com/thomasloven/lovelace-layout-card
+
+#### Add the view
+
+Create a new view in your dashboard using the **Manual** option, then paste the contents of `lovelace/pc_monitor_dashboard.yaml`.
+
+> This file is a single Lovelace **view layout**, not a full dashboard export. Paste it as the configuration of one view.
+
+> **Note:** Entity IDs in the layout assume the default sensor names from `packages/pc_monitor.yaml`. If your entities differ, update them in the YAML before saving.
 
 ---
 
@@ -109,16 +128,16 @@ All topics follow the pattern `{prefix}/sensor/{name}/state`.
 | Sensor | Topic (default prefix) |
 |---|---|
 | CPU Temperature | `homeassistant/sensor/cpu_temp_max/state` |
-| CPU Load | `homeassistant/sensor/cpu_load/state` |
-| RAM Used % | `homeassistant/sensor/ram_used_pct/state` |
+| CPU Usage | `homeassistant/sensor/cpu_usage/state` |
+| RAM Used % | `homeassistant/sensor/ram_used_percent/state` |
 | RAM Used GB | `homeassistant/sensor/ram_used_gb/state` |
-| GPU Temperature | `homeassistant/sensor/gpu_temp/state` |
-| GPU Load | `homeassistant/sensor/gpu_load/state` |
-| GPU VRAM Used % | `homeassistant/sensor/gpu_vram_used_pct/state` |
-| Disk Used % (root) | `homeassistant/sensor/disk_used_pct_root/state` |
-| Disk Free GB (root) | `homeassistant/sensor/disk_free_gb_root/state` |
-| Network Download | `homeassistant/sensor/net_download_{iface}/state` |
-| Network Upload | `homeassistant/sensor/net_upload_{iface}/state` |
+| GPU Temperature | `homeassistant/sensor/gpu_temp_edge/state` |
+| GPU Usage | `homeassistant/sensor/gpu_usage/state` |
+| GPU VRAM Used % | `homeassistant/sensor/gpu_vram_used_percent/state` |
+| Disk Used % (root) | `homeassistant/sensor/disk_root_use_percent/state` |
+| Disk Free GB (root) | `homeassistant/sensor/disk_root_free_gb/state` |
+| Network Download | `homeassistant/sensor/net_<iface>_rx_kbs/state` (e.g. `net_eno1_rx_kbs`) |
+| Network Upload | `homeassistant/sensor/net_<iface>_tx_kbs/state` (e.g. `net_eno1_tx_kbs`) |
 
 ---
 

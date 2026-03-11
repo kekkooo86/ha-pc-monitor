@@ -1,69 +1,53 @@
-title: PC Monitor
-path: pc-monitor
-icon: mdi:desktop-tower-monitor
+title: PC
+path: pc
+icon: mdi:desktop-classic
+type: custom:grid-layout
+layout:
+  grid-template-columns: 33.3% 33.3% 33.3%
+  grid-template-rows: auto
+  grid-gap: 8px
+  padding: 8px
+  mediaquery:
+    "(max-width: 1100px)":
+      grid-template-columns: 50% 50%
+    "(max-width: 700px)":
+      grid-template-columns: 100%
 cards:
-
-  # ── Header row: CPU + RAM gauges ─────────────────────────────────────────
-
-  - type: horizontal-stack
+  - type: vertical-stack
     cards:
+      - type: heading
+        heading: 🖥️ Processore (CPU)
       - type: gauge
         entity: sensor.pc_cpu_temperature
-        name: CPU Temp
-        unit: "°C"
-        min: 0
-        max: 100
+        name: Temp
+        unit: °C
         needle: true
         segments:
           - from: 0
-            color: "#2196F3"   # blue — cold
+            color: "#2196F3"
           - from: 30
-            color: "#4CAF50"   # green — normal
+            color: "#4CAF50"
           - from: 57
-            color: "#FF9800"   # orange — warm
+            color: "#FF9800"
           - from: 75
-            color: "#F44336"   # red — hot
-
-      - type: gauge
-        entity: sensor.pc_cpu_load
-        name: CPU Load
-        unit: "%"
-        min: 0
-        max: 100
-        needle: true
-        segments:
-          - from: 0
-            color: "#4CAF50"
-          - from: 60
-            color: "#FF9800"
-          - from: 85
             color: "#F44336"
-
       - type: gauge
-        entity: sensor.pc_ram_used
-        name: RAM
+        entity: sensor.pc_cpu_usage
+        name: Utilizzo
         unit: "%"
-        min: 0
-        max: 100
         needle: true
-        segments:
-          - from: 0
-            color: "#4CAF50"
-          - from: 70
-            color: "#FF9800"
-          - from: 90
-            color: "#F44336"
-
-  # ── GPU row (remove if no GPU) ────────────────────────────────────────────
-
-  - type: horizontal-stack
+      - type: history-graph
+        entities:
+          - entity: sensor.pc_cpu_temperature
+        hours_to_show: 24
+  - type: vertical-stack
     cards:
+      - type: heading
+        heading: 🎮 Grafica (GPU)
       - type: gauge
         entity: sensor.pc_gpu_temperature
-        name: GPU Temp
-        unit: "°C"
-        min: 0
-        max: 100
+        name: Temp GPU
+        unit: °C
         needle: true
         segments:
           - from: 0
@@ -74,81 +58,40 @@ cards:
             color: "#FF9800"
           - from: 85
             color: "#F44336"
-
       - type: gauge
-        entity: sensor.pc_gpu_load
-        name: GPU Load
+        entity: sensor.pc_gpu_usage
+        name: Carico GPU
         unit: "%"
-        min: 0
-        max: 100
         needle: true
-        segments:
-          - from: 0
-            color: "#4CAF50"
-          - from: 60
-            color: "#FF9800"
-          - from: 85
-            color: "#F44336"
-
       - type: gauge
         entity: sensor.pc_gpu_vram_used
-        name: VRAM
+        name: VRAM Usata
         unit: "%"
-        min: 0
-        max: 100
         needle: true
-        segments:
-          - from: 0
-            color: "#4CAF50"
-          - from: 70
-            color: "#FF9800"
-          - from: 90
-            color: "#F44336"
-
-  # ── History graphs ────────────────────────────────────────────────────────
-
-  - type: history-graph
-    title: CPU Temperature (24h)
-    hours_to_show: 24
-    entities:
-      - entity: sensor.pc_cpu_temperature
-        name: CPU Temp
-
-  - type: history-graph
-    title: CPU Load & RAM (24h)
-    hours_to_show: 24
-    entities:
-      - entity: sensor.pc_cpu_load
-        name: CPU Load
-      - entity: sensor.pc_ram_used
-        name: RAM Used
-
-  # ── Disk & Network ────────────────────────────────────────────────────────
-
-  - type: horizontal-stack
+  - type: vertical-stack
     cards:
+      - type: heading
+        heading: 💾 Memoria & Risorse
       - type: entities
-        title: Disk
+        show_header_toggle: false
         entities:
+          - entity: sensor.pc_ram_used
+            name: RAM Usata %
+          - entity: sensor.pc_ram_used_gb
+            name: RAM Usata GB
+          - type: divider
           - entity: sensor.pc_disk_used_root
-            name: Used (root) %
+            name: Disco Usato %
           - entity: sensor.pc_disk_free_root
-            name: Free (root) GB
-
+            name: Disco Libero GB
       - type: entities
-        title: Network (eth0)
+        title: Rete
         entities:
           - entity: sensor.pc_network_download_eth0
-            name: Download
+            name: ⬇️ Down
           - entity: sensor.pc_network_upload_eth0
-            name: Upload
-
-  # ── RAM numeric detail ────────────────────────────────────────────────────
-
-  - type: entities
-    title: Memory Detail
-    entities:
-      - entity: sensor.pc_ram_used
-        name: RAM Used %
-      - entity: sensor.pc_ram_used_gb
-        name: RAM Used GB
+            name: ⬆️ Up
+      - type: history-graph
+        entities:
+          - entity: sensor.pc_ram_used
+        hours_to_show: 24
