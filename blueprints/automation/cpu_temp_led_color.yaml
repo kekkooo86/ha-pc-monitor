@@ -1,16 +1,16 @@
 blueprint:
-  name: CPU Temperature LED Color
+  name: PC Metric LED Color
   description: >
-    Changes the color of an RGB light based on the CPU temperature published
+    Changes the color of an RGB light based on a numeric PC metric published
     by sysmon-mqtt (https://github.com/kekkooo86/sysmon-mqtt).
 
-    Color interpolation:
-      - ≤ temp_cold   → blue  [0, 0, 255]
-      - temp_cold → temp_mid  → blue → green
-      - temp_mid  → temp_hot  → green → red
-      - ≥ temp_hot    → red   [255, 0, 0]
+    Gauge-aligned color interpolation based on a configurable maximum value:
+      - 0% → low_threshold_pct       → cold_color → warm_color
+      - low_threshold_pct → mid_threshold_pct   → warm_color → hot_color
+      - mid_threshold_pct → high_threshold_pct  → hot_color → critical_color
+      - ≥ high_threshold_pct                     → critical_color
 
-    The automation triggers on every state change of the CPU temperature sensor.
+    The automation triggers on every state change of the selected metric sensor.
     No input_number helper is required.
 
   domain: automation
@@ -18,14 +18,14 @@ blueprint:
 
   input:
     cpu_temp_sensor:
-      name: CPU Temperature Sensor
+      name: Metric Sensor
       description: >
-        The sensor that receives CPU temperature from sysmon-mqtt via MQTT.
-        With the default package it is named sensor.pc_cpu_temperature.
+        The numeric sensor to monitor from sysmon-mqtt via MQTT.
+        For example, you can use the default CPU temperature sensor
+        or a percentage sensor such as CPU usage.
       selector:
         entity:
           domain: sensor
-          device_class: temperature
 
     rgb_light:
       name: RGB Light
@@ -34,51 +34,106 @@ blueprint:
         entity:
           domain: light
 
-    temp_cold:
-      name: Cold threshold (°C)
-      description: Below this temperature the LED is blue.
-      default: 30
+    metric_max:
+      name: Maximum metric value
+      description: >
+        Absolute maximum expected for the selected sensor.
+        Example: for CPU temperature you might set 90.
+      default: 90
+      selector:
+        number:
+          min: 1
+          max: 1000
+
+    low_threshold_pct:
+      name: Low threshold percentage
+      description: >
+        Percentage of the maximum metric value where the LED reaches
+        the warm color.
+      default: 33.3
       selector:
         number:
           min: 0
-          max: 60
-          unit_of_measurement: "°C"
+          max: 100
+          step: 0.1
+          unit_of_measurement: "%"
 
-    temp_mid:
-      name: Mid threshold (°C)
+    mid_threshold_pct:
+      name: Mid threshold percentage
       description: >
-        Transition point between blue→green and green→red.
-        Blue at temp_cold, green at this value.
-      default: 57
+        Percentage of the maximum metric value where the LED reaches
+        the hot color.
+      default: 63.3
       selector:
         number:
-          min: 20
-          max: 80
-          unit_of_measurement: "°C"
+          min: 0
+          max: 100
+          step: 0.1
+          unit_of_measurement: "%"
 
-    temp_hot:
-      name: Hot threshold (°C)
-      description: Above this temperature the LED is fully red.
-      default: 85
+    high_threshold_pct:
+      name: High threshold percentage
+      description: >
+        Percentage of the maximum metric value where the LED reaches
+        the critical color and stays there above this point.
+      default: 83.3
       selector:
         number:
-          min: 40
-          max: 110
-          unit_of_measurement: "°C"
+          min: 0
+          max: 100
+          step: 0.1
+          unit_of_measurement: "%"
+
+    color_cold:
+      name: Cold color
+      description: Default matches the first gauge segment color.
+      default: [33, 150, 243]
+      selector:
+        color_rgb:
+
+    color_warm:
+      name: Warm color
+      description: Default matches the second gauge segment color.
+      default: [76, 175, 80]
+      selector:
+        color_rgb:
+
+    color_hot:
+      name: Hot color
+      description: Default matches the third gauge segment color.
+      default: [255, 152, 0]
+      selector:
+        color_rgb:
+
+    color_critical:
+      name: Critical color
+      description: Default matches the fourth gauge segment color.
+      default: [244, 67, 54]
+      selector:
+        color_rgb:
 
 trigger:
   - platform: state
     entity_id: !input cpu_temp_sensor
 
 variables:
-  cold_threshold: !input temp_cold
-  mid_threshold: !input temp_mid
-  hot_threshold: !input temp_hot
+  metric_max_value: !input metric_max
+  low_threshold_percent: !input low_threshold_pct
+  mid_threshold_percent: !input mid_threshold_pct
+  high_threshold_percent: !input high_threshold_pct
+  cold_color: !input color_cold
+  warm_color: !input color_warm
+  hot_color: !input color_hot
+  critical_color: !input color_critical
 
 condition:
   - condition: template
     value_template: >
-      {{ trigger.to_state is not none and (trigger.to_state.state | float(none)) is not none }}
+      {{
+        trigger.to_state is not none
+        and (trigger.to_state.state | float(none)) is not none
+        and (metric_max_value | float(0)) > 0
+      }}
 
 action:
   - service: light.turn_on
@@ -86,33 +141,40 @@ action:
       entity_id: !input rgb_light
     data:
       rgb_color: >
-        {% set temp = states(trigger.entity_id) | float %}
-        {% set cold = cold_threshold | float %}
-        {% set mid = mid_threshold | float %}
-        {% set hot = hot_threshold | float %}
+        {% set metric = states(trigger.entity_id) | float %}
+        {% set minimum = 0 %}
+        {% set max_metric = metric_max_value | float %}
+        {% set low = max_metric * ((low_threshold_percent | float) / 100) %}
+        {% set mid = max_metric * ((mid_threshold_percent | float) / 100) %}
+        {% set high = max_metric * ((high_threshold_percent | float) / 100) %}
 
         {% macro lerp(t, t0, t1, c0, c1) %}
-          {% set ratio_raw = ((t - t0) / (t1 - t0)) %}
-          {% if ratio_raw < 0 %}
-            {% set ratio = 0 %}
-          {% elif ratio_raw > 1 %}
-            {% set ratio = 1 %}
+          {% set span = (t1 - t0) %}
+          {% if span <= 0 %}
+            {{ c1[0] }}, {{ c1[1] }}, {{ c1[2] }}
           {% else %}
-            {% set ratio = ratio_raw %}
+            {% set ratio_raw = ((t - t0) / span) %}
+            {% if ratio_raw < 0 %}
+              {% set ratio = 0 %}
+            {% elif ratio_raw > 1 %}
+              {% set ratio = 1 %}
+            {% else %}
+              {% set ratio = ratio_raw %}
+            {% endif %}
+            {{ (c0[0] + (c1[0] - c0[0]) * ratio) | round(0) | int }},
+            {{ (c0[1] + (c1[1] - c0[1]) * ratio) | round(0) | int }},
+            {{ (c0[2] + (c1[2] - c0[2]) * ratio) | round(0) | int }}
           {% endif %}
-          {{ (c0[0] + (c1[0] - c0[0]) * ratio) | int }},
-          {{ (c0[1] + (c1[1] - c0[1]) * ratio) | int }},
-          {{ (c0[2] + (c1[2] - c0[2]) * ratio) | int }}
         {% endmacro %}
 
-        {% if temp <= cold %}
-          [0, 0, 255]
-        {% elif temp <= mid %}
-          [{{ lerp(temp, cold, mid, [0,0,255], [0,255,0]) }}]
-        {% elif temp <= hot %}
-          [{{ lerp(temp, mid, hot, [0,255,0], [255,0,0]) }}]
+        {% if metric <= low %}
+          [{{ lerp(metric, minimum, low, cold_color, warm_color) }}]
+        {% elif metric <= mid %}
+          [{{ lerp(metric, low, mid, warm_color, hot_color) }}]
+        {% elif metric <= high %}
+          [{{ lerp(metric, mid, high, hot_color, critical_color) }}]
         {% else %}
-          [255, 0, 0]
+          {{ critical_color }}
         {% endif %}
 
 mode: single

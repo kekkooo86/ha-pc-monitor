@@ -25,11 +25,11 @@ cards:
         segments:
           - from: 0
             color: "#2196F3"
-          - from: 30
+          - from: 33.3
             color: "#4CAF50"
-          - from: 57
+          - from: 63.3
             color: "#FF9800"
-          - from: 75
+          - from: 83.3
             color: "#F44336"
       - type: gauge
         entity: sensor.pc_cpu_usage

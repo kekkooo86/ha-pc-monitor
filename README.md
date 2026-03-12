@@ -11,7 +11,7 @@ Data is published to MQTT by **[sysmon-mqtt](https://github.com/kekkooo86/sysmon
 | File | Description |
 |---|---|
 | `packages/pc_monitor.yaml` | MQTT sensors: CPU temp/load, RAM, GPU, disk, network |
-| `blueprints/automation/cpu_temp_led_color.yaml` | Blueprint: RGB light color follows CPU temperature |
+| `blueprints/automation/cpu_temp_led_color.yaml` | Blueprint: RGB light color follows a selected PC metric |
 | `lovelace/pc_monitor_dashboard.yaml` | Lovelace view using `custom:grid-layout` for a responsive PC dashboard |
 
 ---
@@ -83,17 +83,22 @@ Copy `blueprints/automation/cpu_temp_led_color.yaml` to:
 config/blueprints/automation/ha-pc-monitor/cpu_temp_led_color.yaml
 ```
 
-Then in HA go to **Settings → Automations → Blueprints** and create a new automation from `CPU Temperature LED Color`.
+Then in HA go to **Settings → Automations → Blueprints** and create a new automation from `PC Metric LED Color`.
 
 **Blueprint inputs:**
 
 | Input | Description | Default |
 |---|---|---|
-| CPU Temperature Sensor | The `sensor.pc_cpu_temperature` entity | — |
+| Metric Sensor | Any numeric sysmon-mqtt sensor, such as `sensor.pc_cpu_temperature` or `sensor.pc_cpu_usage` | — |
 | RGB Light | Your LED light entity | — |
-| Cold threshold | Below this → blue | 30°C |
-| Mid threshold | Blue→green transition point | 57°C |
-| Hot threshold | Above this → red | 85°C |
+| Maximum metric value | Absolute maximum expected for the sensor | `90` |
+| Low threshold percentage | Percentage of max where the LED reaches the 2nd gauge color | `33.3%` |
+| Mid threshold percentage | Percentage of max where the LED reaches the 3rd gauge color | `63.3%` |
+| High threshold percentage | Percentage of max where the LED reaches the 4th gauge color | `83.3%` |
+| Cold color | 1st gauge color anchor | `[33, 150, 243]` |
+| Warm color | 2nd gauge color anchor | `[76, 175, 80]` |
+| Hot color | 3rd gauge color anchor | `[255, 152, 0]` |
+| Critical color | 4th gauge color anchor | `[244, 67, 54]` |
 
 ### 4. Add the dashboard layout
 
@@ -143,14 +148,29 @@ All topics follow the pattern `{prefix}/sensor/{name}/state`.
 
 ## LED color logic
 
-| Temperature range | Color |
+| Metric range | Color |
 |---|---|
-| ≤ cold threshold | 🔵 Blue `[0, 0, 255]` |
-| cold → mid | 🔵→🟢 Blue to green (interpolated) |
-| mid → hot | 🟢→🔴 Green to red (interpolated) |
-| ≥ hot threshold | 🔴 Red `[255, 0, 0]` |
+| `0 → low threshold` | Cold → warm (interpolated) |
+| `low → mid` | Warm → hot (interpolated) |
+| `mid → high` | Hot → critical (interpolated) |
+| `≥ high threshold` | Critical color |
 
-Thresholds are configurable per-automation when creating from the blueprint.
+The blueprint calculates absolute thresholds from the configured maximum value:
+
+```text
+absolute threshold = maximum metric value × percentage / 100
+```
+
+With the default values, a maximum of `90` produces thresholds at about
+`30`, `57`, and `75`, matching the included CPU gauge.
+
+For percentage-based sensors such as CPU usage, set the maximum value to `100`.
+
+Threshold percentages and the 4 RGB anchor colors are configurable per automation.
+The defaults are aligned with the CPU gauge shipped in `lovelace/pc_monitor_dashboard.yaml`:
+blue `#2196F3`, green `#4CAF50`, orange `#FF9800`, red `#F44336`.
+This works with any numeric metric exposed by the package, including temperature
+and percentage-based usage sensors.
 
 ---
 
