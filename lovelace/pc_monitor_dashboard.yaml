@@ -95,3 +95,33 @@ cards:
         entities:
           - entity: sensor.pc_ram_used
         hours_to_show: 24
+
+  # ── LED Control ─────────────────────────────────────────────────────────────
+  # Replace REPLACE_WITH_YOUR_LED_ENTITY with your actual light entity ID.
+  # When the toggle is ON the blueprint automation controls the LED color
+  # from the sensor. When OFF the light card below allows free color picking.
+  - type: vertical-stack
+    cards:
+      - type: heading
+        heading: 💡 Controllo LED
+      - type: entities
+        entities:
+          - entity: input_boolean.pc_led_sensor_mode
+            name: Modalità Automatica
+      - type: conditional
+        conditions:
+          - entity: input_boolean.pc_led_sensor_mode
+            state: "on"
+        card:
+          type: entities
+          show_header_toggle: false
+          entities:
+            - entity: sensor.pc_cpu_temperature
+              name: "🌡️ Sensore attivo"
+      - type: conditional
+        conditions:
+          - entity: input_boolean.pc_led_sensor_mode
+            state: "off"
+        card:
+          type: light
+          entity: light.REPLACE_WITH_YOUR_LED_ENTITY

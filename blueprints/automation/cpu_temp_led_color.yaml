@@ -112,6 +112,17 @@ blueprint:
       selector:
         color_rgb:
 
+    led_mode_toggle:
+      name: LED Sensor Mode toggle (optional)
+      description: >
+        If set, the automation only runs when this boolean helper is ON.
+        When OFF, the automation is skipped — allowing manual light control.
+        Leave empty to always run regardless of any toggle.
+      default: {}
+      selector:
+        entity:
+          domain: input_boolean
+
 trigger:
   - platform: state
     entity_id: !input cpu_temp_sensor
@@ -125,6 +136,47 @@ variables:
   warm_color: !input color_warm
   hot_color: !input color_hot
   critical_color: !input color_critical
+  led_toggle: !input led_mode_toggle
+  # Precomputed values — variables: supports free-form Jinja2 without restrictions
+  _m: "{{ states(trigger.entity_id) | float(0) }}"
+  _max: "{{ metric_max_value | float }}"
+  _low: "{{ _max * (low_threshold_percent | float / 100) }}"
+  _mid: "{{ _max * (mid_threshold_percent | float / 100) }}"
+  _high: "{{ _max * (high_threshold_percent | float / 100) }}"
+  # zone: 0=cold→warm, 1=warm→hot, 2=hot→critical, 3=critical
+  _zone: "{{ 3 if (_m | float) > (_high | float) else (2 if (_m | float) > (_mid | float) else (1 if (_m | float) > (_low | float) else 0)) }}"
+  # interpolation ratio [0..1] within the current zone
+  _ratio: >-
+    {% set m = _m | float %}
+    {% set z = _zone | int %}
+    {% set low = _low | float %}
+    {% set mid = _mid | float %}
+    {% set high = _high | float %}
+    {% if z == 0 %}{{ [[m / (low if low > 0 else 1), 0] | max, 1] | min }}
+    {% elif z == 1 %}{{ [[(m - low) / ((mid - low) if (mid - low) > 0 else 1), 0] | max, 1] | min }}
+    {% elif z == 2 %}{{ [[(m - mid) / ((high - mid) if (high - mid) > 0 else 1), 0] | max, 1] | min }}
+    {% else %}1{% endif %}
+  _rgb_r: >-
+    {% set z = _zone | int %}
+    {% set r = _ratio | float %}
+    {% if z == 0 %}{{ (cold_color[0] + (warm_color[0] - cold_color[0]) * r) | round | int }}
+    {% elif z == 1 %}{{ (warm_color[0] + (hot_color[0] - warm_color[0]) * r) | round | int }}
+    {% elif z == 2 %}{{ (hot_color[0] + (critical_color[0] - hot_color[0]) * r) | round | int }}
+    {% else %}{{ critical_color[0] }}{% endif %}
+  _rgb_g: >-
+    {% set z = _zone | int %}
+    {% set r = _ratio | float %}
+    {% if z == 0 %}{{ (cold_color[1] + (warm_color[1] - cold_color[1]) * r) | round | int }}
+    {% elif z == 1 %}{{ (warm_color[1] + (hot_color[1] - warm_color[1]) * r) | round | int }}
+    {% elif z == 2 %}{{ (hot_color[1] + (critical_color[1] - hot_color[1]) * r) | round | int }}
+    {% else %}{{ critical_color[1] }}{% endif %}
+  _rgb_b: >-
+    {% set z = _zone | int %}
+    {% set r = _ratio | float %}
+    {% if z == 0 %}{{ (cold_color[2] + (warm_color[2] - cold_color[2]) * r) | round | int }}
+    {% elif z == 1 %}{{ (warm_color[2] + (hot_color[2] - warm_color[2]) * r) | round | int }}
+    {% elif z == 2 %}{{ (hot_color[2] + (critical_color[2] - hot_color[2]) * r) | round | int }}
+    {% else %}{{ critical_color[2] }}{% endif %}
 
 condition:
   - condition: template
@@ -134,47 +186,18 @@ condition:
         and (trigger.to_state.state | float(none)) is not none
         and (metric_max_value | float(0)) > 0
       }}
+  - condition: template
+    value_template: >
+      {{ led_toggle == {} or states(led_toggle) == 'on' }}
 
 action:
   - service: light.turn_on
     target:
       entity_id: !input rgb_light
     data:
-      rgb_color: >
-        {% set metric = states(trigger.entity_id) | float %}
-        {% set minimum = 0 %}
-        {% set max_metric = metric_max_value | float %}
-        {% set low = max_metric * ((low_threshold_percent | float) / 100) %}
-        {% set mid = max_metric * ((mid_threshold_percent | float) / 100) %}
-        {% set high = max_metric * ((high_threshold_percent | float) / 100) %}
-
-        {% macro lerp(t, t0, t1, c0, c1) %}
-          {% set span = (t1 - t0) %}
-          {% if span <= 0 %}
-            {{ c1[0] }}, {{ c1[1] }}, {{ c1[2] }}
-          {% else %}
-            {% set ratio_raw = ((t - t0) / span) %}
-            {% if ratio_raw < 0 %}
-              {% set ratio = 0 %}
-            {% elif ratio_raw > 1 %}
-              {% set ratio = 1 %}
-            {% else %}
-              {% set ratio = ratio_raw %}
-            {% endif %}
-            {{ (c0[0] + (c1[0] - c0[0]) * ratio) | round(0) | int }},
-            {{ (c0[1] + (c1[1] - c0[1]) * ratio) | round(0) | int }},
-            {{ (c0[2] + (c1[2] - c0[2]) * ratio) | round(0) | int }}
-          {% endif %}
-        {% endmacro %}
-
-        {% if metric <= low %}
-          [{{ lerp(metric, minimum, low, cold_color, warm_color) }}]
-        {% elif metric <= mid %}
-          [{{ lerp(metric, low, mid, warm_color, hot_color) }}]
-        {% elif metric <= high %}
-          [{{ lerp(metric, mid, high, hot_color, critical_color) }}]
-        {% else %}
-          {{ critical_color }}
-        {% endif %}
+      rgb_color:
+        - "{{ _rgb_r | int }}"
+        - "{{ _rgb_g | int }}"
+        - "{{ _rgb_b | int }}"
 
 mode: single

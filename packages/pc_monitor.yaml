@@ -123,3 +123,18 @@ mqtt:
       state_class: measurement
       value_template: "{{ value | float | round(1) }}"
       icon: mdi:upload-network
+
+# ── LED CONTROL HELPERS ───────────────────────────────────────────────────────
+# Enables manual LED override from the dashboard.
+# Steps:
+#   1. In Settings → Helpers, confirm these entities are created after HA reload.
+#   2. In your blueprint automation, set "LED Sensor Mode toggle" to
+#      input_boolean.pc_led_sensor_mode.
+#   3. In the dashboard LED Control section, replace REPLACE_WITH_YOUR_LED_ENTITY
+#      with your actual light entity ID (e.g. light.desk_led).
+
+input_boolean:
+  pc_led_sensor_mode:
+    name: "PC LED — Modalità Automatica"
+    icon: mdi:auto-sync
+    initial: true

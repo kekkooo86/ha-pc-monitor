@@ -11,7 +11,7 @@ Data is published to MQTT by **[sysmon-mqtt](https://github.com/kekkooo86/sysmon
 | File | Description |
 |---|---|
 | `packages/pc_monitor.yaml` | MQTT sensors: CPU temp/load, RAM, GPU, disk, network |
-| `blueprints/automation/cpu_temp_led_color.yaml` | Blueprint: RGB light color follows a selected PC metric |
+| `blueprints/automation/cpu_temp_led_color.yaml` | Blueprint: RGB light color follows a selected PC metric, with optional manual override toggle |
 | `lovelace/pc_monitor_dashboard.yaml` | Lovelace view using `custom:grid-layout` for a responsive PC dashboard |
 
 ---
@@ -98,9 +98,36 @@ Then in HA go to **Settings → Automations → Blueprints** and create a new au
 | Cold color | 1st gauge color anchor | `[33, 150, 243]` |
 | Warm color | 2nd gauge color anchor | `[76, 175, 80]` |
 | Hot color | 3rd gauge color anchor | `[255, 152, 0]` |
-| Critical color | 4th gauge color anchor | `[244, 67, 54]` |
+| LED Sensor Mode toggle (optional) | `input_boolean` helper — when set, the automation only runs while this toggle is ON. Leave empty to always run. | — |
 
-### 4. Add the dashboard layout
+### 5. Enable manual LED override (optional)
+
+This allows you to bypass the sensor-driven automation and pick any color directly from the dashboard.
+
+#### Create the helper
+
+After adding `packages/pc_monitor.yaml`, reload Home Assistant. HA will automatically create the helper:
+- `input_boolean.pc_led_sensor_mode` — toggle shown in the dashboard
+
+#### Connect the blueprint
+
+In your blueprint automation (**Settings → Automations → Edit**), set **LED Sensor Mode toggle** to `input_boolean.pc_led_sensor_mode`.
+
+#### Update the dashboard
+
+In `lovelace/pc_monitor_dashboard.yaml`, replace `REPLACE_WITH_YOUR_LED_ENTITY` in the **LED Control** section with your actual light entity ID (e.g. `light.desk_led`).
+
+#### How it works
+
+| Toggle state | Behavior |
+|---|---|
+| **ON** | The blueprint automation runs normally — LED color follows the sensor |
+| **OFF** | The automation is skipped — the LED Control card shows a color picker for direct control |
+
+> Switching back to ON takes effect on the next sensor state change (typically within seconds).
+
+---
+
 
 The included view uses `type: custom:grid-layout`, so you need the **layout-card** custom card first.
 
